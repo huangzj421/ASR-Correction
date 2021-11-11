@@ -3,7 +3,7 @@
 
 ## Features
 
-* 基于BERT的Sequence to Sequence模型
+* 基于BERT的Sequence to Sequence ASR Correction模型，部分参考pycorrector(https://github.com/shibing624/pycorrector)
 
 
 ## Usage
