@@ -11,7 +11,7 @@ import pypinyin
 import six
 from pypinyin import pinyin
 
-from bertseq2seq.utils.langconv import Converter
+from utils.langconv import Converter
 
 
 def convert_to_unicode(text):

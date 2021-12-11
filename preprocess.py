@@ -8,8 +8,8 @@ from xml.dom import minidom
 from sklearn.model_selection import train_test_split
 
 sys.path.append('..')
-from bertseq2seq.utils.tokenizer import segment
-from bertseq2seq import config
+from utils.tokenizer import segment
+import config
 
 def get_data_file(path, use_segment, segment_type):
     data_list = []

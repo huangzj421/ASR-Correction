@@ -14,7 +14,7 @@ import re
 import jieba
 from jieba import posseg
 
-from bertseq2seq.utils.text_utils import is_chinese_string
+from utils.text_utils import is_chinese_string
 
 jieba.setLogLevel(log_level="ERROR")
 

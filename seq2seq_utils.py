@@ -15,7 +15,7 @@ from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 from transformers.models.bart.modeling_bart import shift_tokens_right as _shift_tokens_right
 
-from bertseq2seq.utils.logger import logger
+from utils.logger import logger
 
 if transformers.__version__ < "4.2.0":
     shift_tokens_right = lambda input_ids, pad_token_id, decoder_start_token_id: _shift_tokens_right(

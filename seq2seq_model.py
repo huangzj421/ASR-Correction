@@ -68,9 +68,9 @@ from transformers.optimization import (
     get_polynomial_decay_schedule_with_warmup,
 )
 
-from bertseq2seq.utils.logger import logger
-from .model_args import Seq2SeqArgs
-from .seq2seq_utils import (
+from utils.logger import logger
+from model_args import Seq2SeqArgs
+from seq2seq_utils import (
     Seq2SeqDataset,
     SimpleSummarizationDataset,
     load_hf_dataset,

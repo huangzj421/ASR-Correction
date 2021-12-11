@@ -5,9 +5,9 @@ import os
 import sys
 
 sys.path.append("..")
-from bertseq2seq.train import train, device
-from bertseq2seq.infer import Inference
-from bertseq2seq.preprocess import get_data_file, get_data_filex, save_corpus_data
+from train import train, device
+from infer import Inference
+from preprocess import get_data_file, get_data_filex, save_corpus_data
 
 
 def main():

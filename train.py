@@ -17,10 +17,10 @@ import torch.nn as nn
 from sklearn.model_selection import train_test_split
 
 sys.path.append('..')
-from bertseq2seq import config
-from bertseq2seq.data_reader import load_bert_data
-from bertseq2seq.utils.logger import logger
-from bertseq2seq.seq2seq_model import Seq2SeqModel
+import config
+from data_reader import load_bert_data
+from utils.logger import logger
+from seq2seq_model import Seq2SeqModel
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

@@ -11,10 +11,10 @@ from jiwer import wer
 import sacrebleu
 sys.path.append('..')
 
-from bertseq2seq import config
-from bertseq2seq.data_reader import load_word_dict
-from bertseq2seq.seq2seq_model import Seq2SeqModel
-from bertseq2seq.utils.logger import logger
+import config
+from data_reader import load_word_dict
+from seq2seq_model import Seq2SeqModel
+from utils.logger import logger
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
