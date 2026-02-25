@@ -13,4 +13,3 @@ torch
 tqdm
 transformers
 accelerate
-wandb

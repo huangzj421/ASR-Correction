@@ -2,6 +2,7 @@
 """
 Qwen3 ASR 文本纠错模型：训练与推理（摘编自 pycorrector.gpt.gpt_model，适配本项目）
 """
+import inspect
 import math
 import os
 import random
@@ -28,6 +29,35 @@ from qwen_utils import QwenArgs, QwenCorrectionDataset, IGNORE_INDEX
 has_cuda = torch.cuda.is_available()
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "FALSE")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
+
+def _extract_corrected_sentence(raw: str) -> str:
+    """从模型输出中取出仅纠错结果：去掉<think>块，取</think>后的首句或首行。"""
+    import re
+    text = raw.strip()
+    if not text:
+        return ""
+    # 若有 </think>，取该标签之后的内容作为候选（模型常把答案放在</think>后）
+    if "</think>" in text:
+        idx = text.find("</think>")
+        text = text[idx + 8 :].strip()  # len("</think>") == 7
+    # 去掉可能残留的 <think>...</think> 块
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = text.strip()
+    if not text:
+        return ""
+    # 取第一行作为纠错结果
+    first_line = text.split("\n")[0].strip()
+    return first_line if first_line else text.strip()
+
+
+def _use_local_files_only(model_name_or_path: str) -> bool:
+    """离线加载：当为本地目录或设置了 HF_HUB_OFFLINE 时只读本地/缓存，不访问网络。"""
+    if os.environ.get("HF_HUB_OFFLINE", "0") == "1" or os.environ.get("TRANSFORMERS_OFFLINE", "0") == "1":
+        return True
+    if os.path.isdir(model_name_or_path) and os.path.isfile(os.path.join(model_name_or_path, "config.json")):
+        return True
+    return False
 
 
 class QwenCorrectionModel:
@@ -79,21 +109,24 @@ class QwenCorrectionModel:
             torch.bfloat16 if self.args.bf16 else (torch.float16 if self.args.fp16 else torch.float32)
         )
 
+        local_files_only = _use_local_files_only(model_name_or_path)
+        if local_files_only:
+            logger.info("Offline mode: loading from local path or cache only (local_files_only=True)")
+
         self.config = AutoConfig.from_pretrained(
             model_name_or_path,
             trust_remote_code=self.args.trust_remote_code,
-            torch_dtype=self.torch_dtype,
+            local_files_only=local_files_only,
             **kwargs,
         )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name_or_path,
+        _load_kw = dict(
             config=self.config,
             load_in_8bit=self.args.int8,
             load_in_4bit=self.args.int4,
-            torch_dtype=self.torch_dtype,
             low_cpu_mem_usage=not is_deepspeed_zero3_enabled(),
             device_map=self.device_map,
             trust_remote_code=self.args.trust_remote_code,
+            local_files_only=local_files_only,
             quantization_config=(
                 BitsAndBytesConfig(
                     load_in_4bit=self.args.int4,
@@ -105,8 +138,17 @@ class QwenCorrectionModel:
                 else None
             ),
         )
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name_or_path, dtype=self.torch_dtype, **_load_kw
+            )
+        except TypeError:
+            _load_kw["torch_dtype"] = self.torch_dtype
+            self.model = AutoModelForCausalLM.from_pretrained(model_name_or_path, **_load_kw)
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name_or_path, trust_remote_code=self.args.trust_remote_code
+            model_name_or_path,
+            trust_remote_code=self.args.trust_remote_code,
+            local_files_only=local_files_only,
         )
         if self.tokenizer.eos_token_id is None:
             self.tokenizer.eos_token = " "
@@ -226,14 +268,19 @@ class QwenCorrectionModel:
         data_collator = DataCollatorForSeq2Seq(
             self.tokenizer, label_pad_token_id=IGNORE_INDEX, padding=True
         )
-        trainer = Trainer(
+        _trainer_kw = dict(
             model=self.model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            tokenizer=self.tokenizer,
             data_collator=data_collator,
         )
+        # 新版本 Trainer 使用 processing_class 替代 tokenizer
+        if "processing_class" in inspect.signature(Trainer.__init__).parameters:
+            _trainer_kw["processing_class"] = self.tokenizer
+        else:
+            _trainer_kw["tokenizer"] = self.tokenizer
+        trainer = Trainer(**_trainer_kw)
 
         logger.info("*** Train ***")
         global_step, training_loss, metrics = trainer.train(resume_from_checkpoint=resume_from_checkpoint)
@@ -334,9 +381,7 @@ class QwenCorrectionModel:
             for j, out in enumerate(outputs):
                 gen = out[prompt_length:]
                 text = self.tokenizer.decode(gen, skip_special_tokens=True)
-                text = text.strip()
-                if text.startswith(" \n\n "):
-                    text = text.replace(" \n\n ", "").strip()
+                text = _extract_corrected_sentence(text)
                 all_outputs.append(text)
         return all_outputs
 

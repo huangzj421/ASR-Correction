@@ -52,9 +52,12 @@ class Inference:
                 logger.info("Loaded PEFT from %s", model_dir)
             else:
                 self.model.model = AutoModelForCausalLM.from_pretrained(
-                    model_dir, torch_dtype=self.model.torch_dtype, device_map=self.model.device_map
+                    model_dir,
+                    torch_dtype=self.model.torch_dtype,
+                    device_map=self.model.device_map,
+                    local_files_only=True,
                 )
-                self.model.tokenizer = AutoTokenizer.from_pretrained(model_dir)
+                self.model.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
                 logger.info("Loaded full model from %s", model_dir)
         self.max_length = max_length
 

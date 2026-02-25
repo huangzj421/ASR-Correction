@@ -13,13 +13,13 @@ speechx_dev_path = os.path.join(pwd_path, "./data/mandarin-accented/valid.csv")
 use_segment = True
 segment_type = "char"
 
-dataset = "manacc"  # sighan / aishell1 / magicdata / mandarin
+dataset = "sighan"  # manacc / sighan / aishell1 / magicdata / mandarin
 output_dir = os.path.join(pwd_path, "output")
 train_path = os.path.join(output_dir, "train_{}.txt".format(dataset))
 dev_path = os.path.join(output_dir, "dev_{}.txt".format(dataset))
 
 # Qwen3 基座：HuggingFace 模型 id 或本地目录（离线时填绝对路径，如 /data/models/Qwen3-4B）
-model_name_or_path = "Qwen/Qwen3-4B"
+model_name_or_path = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/hf_models/huggingface.co/Qwen/Qwen3-4B"
 model_dir = os.path.join(output_dir, "model_qwen3_{}".format(dataset))
 
 batch_size = 4
