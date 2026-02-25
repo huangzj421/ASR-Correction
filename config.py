@@ -1,42 +1,38 @@
 # -*- coding: utf-8 -*-
+"""Qwen3 ASR 纠错配置（已移除 BERTSeq2Seq）"""
 
 import os
 
 pwd_path = os.path.abspath(os.path.dirname(__file__))
 
-# Training data path.
-sighan_train_path = os.path.join(pwd_path, './data/sighan_2015/train.tsv')
-sighan_dev_path = os.path.join(pwd_path, './data/sighan_2015/dev.tsv')
-speechx_train_path = os.path.join(pwd_path, './data/mandarin-accented/train.csv')
-speechx_dev_path = os.path.join(pwd_path, './data/mandarin-accented/valid.csv')
+sighan_train_path = os.path.join(pwd_path, "./data/sighan_2015/train.tsv")
+sighan_dev_path = os.path.join(pwd_path, "./data/sighan_2015/dev.tsv")
+speechx_train_path = os.path.join(pwd_path, "./data/mandarin-accented/train.csv")
+speechx_dev_path = os.path.join(pwd_path, "./data/mandarin-accented/valid.csv")
 
 use_segment = True
-segment_type = 'char'  # 'word' use jieba.lcut; 'char' use list(sentence)
+segment_type = "char"
 
-dataset = 'manacc'  # 'sighan' or 'aishell1' or 'magicdata' or 'mandarin'
-output_dir = os.path.join(pwd_path, 'output')
-# Training data path.
-train_path = os.path.join(output_dir, 'train_{}.txt'.format(dataset))
-# Validation data path.
-dev_path = os.path.join(output_dir, 'dev_{}.txt'.format(dataset))
+dataset = "manacc"  # sighan / aishell1 / magicdata / mandarin
+output_dir = os.path.join(pwd_path, "output")
+train_path = os.path.join(output_dir, "train_{}.txt".format(dataset))
+dev_path = os.path.join(output_dir, "dev_{}.txt".format(dataset))
 
-arch = "bert"  # 'bertseq2seq'
-model_name_or_path = "bert-base-chinese"  # for "bert-base-chinese"
+# Qwen3 基座：HuggingFace 模型 id 或本地目录（离线时填绝对路径，如 /data/models/Qwen3-4B）
+model_name_or_path = "Qwen/Qwen3-4B"
+model_dir = os.path.join(output_dir, "model_qwen3_{}".format(dataset))
 
-# config
-model_dir = os.path.join(output_dir, 'model_{}_{}'.format(arch, dataset))
-
-batch_size = 16
-epochs = 10
-max_length = 128
-evaluate_during_training = False
+batch_size = 4
+epochs = 3
+max_length = 256
+max_seq_length = 256
 eval_batch_size = 16
-evaluate_during_training_steps = 2500
+eval_steps = 200
+save_steps = 400
+use_peft = True
+learning_rate = 2e-5
 
 gpu_id = 0
-dropout = 0.25
-embed_size = 128
-hidden_size = 128
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
