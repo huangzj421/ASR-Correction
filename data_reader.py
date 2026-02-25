@@ -2,11 +2,18 @@
 
 # Brief: Corpus for model
 
+import glob
+import os
+import random
 import sys
 from codecs import open
 from collections import Counter
 
 import numpy as np
+
+# 关键词纠错数据：每行 错误文本<mask_99>关键词1, 关键词2, ...<mask_99>正确文本
+KEYWORD_SEP = "<mask_99>"
+KEYWORD_USER_TEMPLATE = "错误文本：{error}\n候选关键词：{keywords}"
 
 # Define constants associated with the usual special tokens.
 SOS_TOKEN = '<sos>'
@@ -65,6 +72,59 @@ def load_bert_data(path, use_segment, num_examples=None):
         trg = terms[1].replace(' ', '') if use_segment else terms[1]
         src_trg_lines.append([src, trg])
     return src_trg_lines
+
+
+def _read_keyword_lines_from_dir(dir_path):
+    """从目录下所有 txt 中读取并解析 错误<mask_99>关键词<mask_99>正确 行，返回 [(error, keywords, target), ...]。"""
+    if not os.path.isdir(dir_path):
+        return []
+    out = []
+    for path in sorted(glob.glob(os.path.join(dir_path, "*.txt"))):
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(KEYWORD_SEP)
+                if len(parts) != 3:
+                    continue
+                error_text = parts[0].strip()
+                keywords_str = parts[1].strip()
+                target_text = parts[2].strip()
+                out.append((error_text, keywords_str, target_text))
+    return out
+
+
+def load_keyword_correction_data(pos_dir, neg_dir, neg_ratio=1.0, seed=42):
+    """
+    加载「上下文关键词」纠错数据：正例全用，负例按 neg_ratio 倍正例数量随机采样后与正例打乱。
+    返回 list of [input_text, target_text]，其中 input_text 已含「错误文本」与「候选关键词」模板。
+    """
+    random.seed(seed)
+    pos_list = _read_keyword_lines_from_dir(pos_dir)
+    neg_list = _read_keyword_lines_from_dir(neg_dir)
+    n_pos = len(pos_list)
+    n_neg_sample = max(0, int(round(n_pos * neg_ratio)))
+    if n_neg_sample > 0 and neg_list:
+        neg_sampled = random.sample(neg_list, min(n_neg_sample, len(neg_list)))
+    else:
+        neg_sampled = []
+    # 构建 (input_text, target_text)：input_text 为模型看到的用户输入（错误+关键词）
+    rows = []
+    for error, keywords, target in pos_list + neg_sampled:
+        input_text = KEYWORD_USER_TEMPLATE.format(error=error, keywords=keywords)
+        rows.append([input_text, target])
+    random.shuffle(rows)
+    return rows
+
+
+def build_keyword_input(error_text, keywords_list):
+    """推理时构造一条关键词纠错输入（与训练时一致）。keywords_list 为 list 或已用逗号拼接的 str。"""
+    if isinstance(keywords_list, (list, tuple)):
+        keywords_str = ", ".join(str(k) for k in keywords_list)
+    else:
+        keywords_str = str(keywords_list).strip()
+    return KEYWORD_USER_TEMPLATE.format(error=error_text.strip(), keywords=keywords_str)
 
 
 def create_dataset(path, num_examples=None):

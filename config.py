@@ -34,5 +34,16 @@ learning_rate = 2e-5
 
 gpu_id = 0
 
+# ---------- 上下文关键词纠错分支（train_keyword.py）----------
+# 正例目录：正确词在关键词里；负例目录：全干扰，希望模型不纠错
+keyword_pos_dir = os.path.join(pwd_path, "data/keyword/pos")
+keyword_neg_dir = os.path.join(pwd_path, "data/keyword/neg")
+# 负例采样量 = 正例数量 * keyword_neg_ratio
+keyword_neg_ratio = 1.0
+# 从合并后的数据中划分验证集比例
+keyword_dev_ratio = 0.1
+keyword_model_dir = os.path.join(output_dir, "model_qwen3_keyword")
+manual_seed = 42
+
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
