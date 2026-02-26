@@ -362,6 +362,7 @@ class QwenCorrectionModel:
                 padding=True,
                 truncation=True,
                 max_length=self.args.max_seq_length,
+                enable_thinking=False # Switches between thinking and non-thinking modes. Default is True.
             )
             if hasattr(inputs, "to"):
                 input_ids = inputs.to(self.device)

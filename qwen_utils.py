@@ -135,6 +135,7 @@ def preprocess_correction_pairs(
                 return_tensors=None,
                 truncation=True,
                 max_length=args.max_seq_length,
+                enable_thinking=False # Switches between thinking and non-thinking modes. Default is True.
             )
             if isinstance(prompt_ids, list) and len(prompt_ids):
                 if isinstance(prompt_ids[0], list):
@@ -160,6 +161,7 @@ def preprocess_correction_pairs(
                 return_tensors=None,
                 truncation=True,
                 max_length=max_full_length,
+                enable_thinking=False # Switches between thinking and non-thinking modes. Default is True.
             )
             if isinstance(full_ids, list) and len(full_ids) and isinstance(full_ids[0], (list, int)):
                 if isinstance(full_ids[0], list):

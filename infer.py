@@ -33,32 +33,38 @@ class Inference:
         max_length=256,
         eval_batch_size=8,
         use_cuda=None,
+        checkpoint_path=None,
     ):
+        """
+        :param model_dir: 根模型目录（含 model_args.json），或单个 checkpoint 目录。
+        :param checkpoint_path: 若提供，则 base 名从 model_dir 读，PEFT 从 checkpoint_path 加载（用于多 checkpoint 推理）。
+        """
         use_cuda = use_cuda if use_cuda is not None else torch.cuda.is_available()
+        load_dir = checkpoint_path if checkpoint_path else model_dir
         base_name = load_base_model_name(model_dir)
         args = {
             "max_length": max_length,
             "eval_batch_size": eval_batch_size,
         }
         self.model = QwenCorrectionModel(base_name, args=args, use_cuda=use_cuda)
-        if os.path.isdir(model_dir):
-            adapter_path = os.path.join(model_dir, "adapter_config.json")
+        if os.path.isdir(load_dir):
+            adapter_path = os.path.join(load_dir, "adapter_config.json")
             if os.path.isfile(adapter_path):
                 from peft import PeftModel
                 self.model.model = PeftModel.from_pretrained(
-                    self.model.model, model_dir, torch_dtype=self.model.torch_dtype
+                    self.model.model, load_dir, torch_dtype=self.model.torch_dtype
                 )
                 self.model.model = self.model.model.merge_and_unload()
-                logger.info("Loaded PEFT from %s", model_dir)
+                logger.info("Loaded PEFT from %s", load_dir)
             else:
                 self.model.model = AutoModelForCausalLM.from_pretrained(
-                    model_dir,
+                    load_dir,
                     torch_dtype=self.model.torch_dtype,
                     device_map=self.model.device_map,
                     local_files_only=True,
                 )
-                self.model.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
-                logger.info("Loaded full model from %s", model_dir)
+                self.model.tokenizer = AutoTokenizer.from_pretrained(load_dir, local_files_only=True)
+                logger.info("Loaded full model from %s", load_dir)
         self.max_length = max_length
 
     def predict(self, sentence_list):

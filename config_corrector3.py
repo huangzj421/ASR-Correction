@@ -19,9 +19,9 @@ train_path = os.path.join(output_dir, "train_{}.txt".format(dataset))
 dev_path = os.path.join(output_dir, "dev_{}.txt".format(dataset))
 
 # Qwen3 基座：HuggingFace 模型 id 或本地目录（离线时填绝对路径，如 /data/models/Qwen3-4B）
-model_name_or_path = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/hf_models/huggingface.co/Qwen/Qwen3-4B"
-# model_dir = os.path.join(output_dir, "model_qwen3_{}".format(dataset))
-model_dir = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword/checkpoint-14400"
+model_name_or_path = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/hf_models/huggingface.co/twnlp/ChineseErrorCorrector3-4B"
+model_dir = os.path.join(output_dir, "model_qwen3_{}".format(dataset))
+# model_dir = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword/checkpoint-14400"
 
 batch_size = 4
 epochs = 3
@@ -43,7 +43,7 @@ keyword_neg_dir = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/h
 keyword_neg_ratio = 1.0
 # 从合并后的数据中划分验证集比例
 keyword_dev_ratio = 0.1
-keyword_model_dir = os.path.join(output_dir, "model_qwen3_keyword")
+keyword_model_dir = os.path.join(output_dir, "model_qwen3_keyword_corrector3")
 manual_seed = 42
 
 if not os.path.exists(output_dir):
