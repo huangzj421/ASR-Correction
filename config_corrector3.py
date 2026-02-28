@@ -28,8 +28,8 @@ epochs = 3
 max_length = 512
 max_seq_length = 512
 eval_batch_size = 16
-eval_steps = 200
-save_steps = 400
+eval_steps = 10000
+save_steps = 20000
 use_peft = True
 learning_rate = 2e-5
 
@@ -43,7 +43,7 @@ keyword_neg_dir = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/h
 keyword_neg_ratio = 1.0
 # 从合并后的数据中划分验证集比例
 keyword_dev_ratio = 0.1
-keyword_model_dir = os.path.join(output_dir, "model_qwen3_keyword_corrector3")
+keyword_model_dir = os.path.join(output_dir, "model_qwen3_keyword_corrector3_all")
 manual_seed = 42
 
 if not os.path.exists(output_dir):

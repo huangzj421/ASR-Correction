@@ -2,9 +2,12 @@
 """
 Qwen3 文本纠错训练工具：数据集与参数（摘编自 pycorrector.gpt.gpt_utils，适配 ASR 纠错 input_text/target_text 格式）
 """
+import json
 import os
 import pickle
 from dataclasses import dataclass, field
+
+import numpy as np
 from typing import List, Optional, Dict, Sequence
 
 from torch.utils.data import Dataset
@@ -77,7 +80,6 @@ class QwenArgs:
     remove_unused_columns: bool = False
     logging_steps: int = 50
     resume_from_checkpoint: str = None
-    gradient_checkpointing: bool = True
     torch_compile: bool = False
     trust_remote_code: bool = True
     qlora: bool = False
@@ -105,6 +107,73 @@ def build_qwen_prompt_and_response(input_text: str, target_text: str) -> List[st
     return [user_part, assistant_part]
 
 
+def preprocess_one_correction_pair(
+    input_text: str,
+    target_text: str,
+    tokenizer,
+    args: QwenArgs,
+) -> Dict[str, List[int]]:
+    """
+    单条 (input_text, target_text) 转为 input_ids 和 labels（list of int）。
+    供预处理写 jsonl 与流式 Dataset 复用。
+    """
+    user_part, assistant_part = build_qwen_prompt_and_response(input_text, target_text)
+    max_full_length = args.max_seq_length + args.max_length
+
+    messages_prompt_only = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_part},
+        {"role": "assistant", "content": " "},
+    ]
+    try:
+        prompt_ids = tokenizer.apply_chat_template(
+            messages_prompt_only,
+            tokenize=True,
+            add_generation_prompt=False,
+            return_tensors=None,
+            truncation=True,
+            max_length=args.max_seq_length,
+            enable_thinking=False,
+        )
+        if isinstance(prompt_ids, list) and len(prompt_ids):
+            if isinstance(prompt_ids[0], list):
+                prompt_ids = prompt_ids[0]
+            elif not isinstance(prompt_ids[0], int):
+                prompt_ids = list(prompt_ids[0])
+        prompt_ids = prompt_ids[:-1]
+    except Exception:
+        prompt_ids = _encode_prompt_only(tokenizer, user_part, args.max_seq_length)
+    prompt_len = len(prompt_ids)
+
+    messages_full = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_part},
+        {"role": "assistant", "content": assistant_part},
+    ]
+    try:
+        full_ids = tokenizer.apply_chat_template(
+            messages_full,
+            tokenize=True,
+            add_generation_prompt=False,
+            return_tensors=None,
+            truncation=True,
+            max_length=max_full_length,
+            enable_thinking=False,
+        )
+        if isinstance(full_ids, list) and len(full_ids) and isinstance(full_ids[0], (list, int)):
+            if isinstance(full_ids[0], list):
+                full_ids = full_ids[0]
+    except Exception:
+        full_ids = _encode_qwen_style(
+            tokenizer, SYSTEM_PROMPT, user_part, assistant_part, max_full_length
+        )
+    input_ids = full_ids[:max_full_length]
+    labels = [IGNORE_INDEX] * len(input_ids)
+    for i in range(prompt_len, len(input_ids)):
+        labels[i] = input_ids[i]
+    return dict(input_ids=input_ids, labels=labels)
+
+
 def preprocess_correction_pairs(
     input_texts: List[str],
     target_texts: List[str],
@@ -117,66 +186,10 @@ def preprocess_correction_pairs(
     """
     input_ids_list = []
     labels_list = []
-    max_full_length = args.max_seq_length + args.max_length
-
     for input_text, target_text in zip(input_texts, target_texts):
-        user_part, assistant_part = build_qwen_prompt_and_response(input_text, target_text)
-        # 1) 编码“仅到 assistant 开头”的 prompt，得到 prompt_len（部分 tokenizer 不接受空 content，用空格）
-        messages_prompt_only = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_part},
-            {"role": "assistant", "content": " "},
-        ]
-        try:
-            prompt_ids = tokenizer.apply_chat_template(
-                messages_prompt_only,
-                tokenize=True,
-                add_generation_prompt=False,
-                return_tensors=None,
-                truncation=True,
-                max_length=args.max_seq_length,
-                enable_thinking=False # Switches between thinking and non-thinking modes. Default is True.
-            )
-            if isinstance(prompt_ids, list) and len(prompt_ids):
-                if isinstance(prompt_ids[0], list):
-                    prompt_ids = prompt_ids[0]
-                elif not isinstance(prompt_ids[0], int):
-                    prompt_ids = list(prompt_ids[0])
-            prompt_ids = prompt_ids[:-1]  # 去掉末尾空格 token，得到“assistant 开始”前长度
-        except Exception:
-            prompt_ids = _encode_prompt_only(tokenizer, user_part, args.max_seq_length)
-        prompt_len = len(prompt_ids)
-
-        # 2) 编码完整序列（prompt + assistant 回复）
-        messages_full = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_part},
-            {"role": "assistant", "content": assistant_part},
-        ]
-        try:
-            full_ids = tokenizer.apply_chat_template(
-                messages_full,
-                tokenize=True,
-                add_generation_prompt=False,
-                return_tensors=None,
-                truncation=True,
-                max_length=max_full_length,
-                enable_thinking=False # Switches between thinking and non-thinking modes. Default is True.
-            )
-            if isinstance(full_ids, list) and len(full_ids) and isinstance(full_ids[0], (list, int)):
-                if isinstance(full_ids[0], list):
-                    full_ids = full_ids[0]
-        except Exception:
-            full_ids = _encode_qwen_style(
-                tokenizer, SYSTEM_PROMPT, user_part, assistant_part, max_full_length
-            )
-        input_ids = full_ids[:max_full_length]
-        labels = [IGNORE_INDEX] * len(input_ids)
-        for i in range(prompt_len, len(input_ids)):
-            labels[i] = input_ids[i]
-        input_ids_list.append(input_ids)
-        labels_list.append(labels)
-
+        one = preprocess_one_correction_pair(input_text, target_text, tokenizer, args)
+        input_ids_list.append(one["input_ids"])
+        labels_list.append(one["labels"])
     return dict(input_ids=input_ids_list, labels=labels_list)
 
 
@@ -258,3 +271,71 @@ class QwenCorrectionDataset(Dataset):
 
     def __getitem__(self, index):
         return self.examples[index]
+
+
+def _read_one_sample_binary(f, dtype=np.int32):
+    """从已打开的二进制文件读一条样本，返回 {"input_ids": list, "labels": list}。"""
+    n_i = np.frombuffer(f.read(4), dtype=np.int32)[0]
+    input_ids = np.frombuffer(f.read(int(n_i) * 4), dtype=dtype).tolist()
+    n_l = np.frombuffer(f.read(4), dtype=np.int32)[0]
+    labels = np.frombuffer(f.read(int(n_l) * 4), dtype=dtype).tolist()
+    return {"input_ids": input_ids, "labels": labels}
+
+
+class QwenCorrectionIndexDataset(Dataset):
+    """
+    按 filelist 流式加载：只把「文件路径 + 每文件行数」放在内存，
+    __getitem__(idx) 时再打开对应文件读该条，返回 {"input_ids", "labels"}。
+    支持 jsonl（每行一个 JSON）或 binary（--format binary 生成 .bin + .bin.offsets.npy）。
+    """
+
+    def __init__(self, filelist_path: str):
+        self.data_files = []
+        self.idata = [0]
+        self._bin_offsets = {}  # file_id -> np.array(offsets)，binary 时按需加载
+        count = 0
+        with open(filelist_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split("\t", 1) if "\t" in line else line.split(None, 1)
+                fn = parts[0].rstrip(":")
+                c = int(parts[1]) if len(parts) > 1 else 0
+                if c <= 0:
+                    continue
+                count += c
+                self.data_files.append(fn)
+                self.idata.append(count)
+        assert len(self.data_files) > 0, f"filelist 为空或格式错误: {filelist_path}"
+        self.total_sample_len = count
+
+    def __len__(self):
+        return self.total_sample_len
+
+    def _get_bin_offsets(self, file_id: int):
+        if file_id not in self._bin_offsets:
+            path = self.data_files[file_id]
+            off_path = path + ".offsets.npy"
+            self._bin_offsets[file_id] = np.load(off_path, allow_pickle=False)
+        return self._bin_offsets[file_id]
+
+    def __getitem__(self, idx: int):
+        import bisect
+        import linecache
+        file_id = bisect.bisect_right(self.idata, idx) - 1
+        line_id = idx - self.idata[file_id]
+        path = self.data_files[file_id]
+        if path.endswith(".bin"):
+            offsets = self._get_bin_offsets(file_id)
+            start = int(offsets[line_id])
+            end = int(offsets[line_id + 1])
+            with open(path, "rb") as f:
+                f.seek(start)
+                raw = f.read(end - start)
+            import io
+            return _read_one_sample_binary(io.BytesIO(raw))
+        line = linecache.getline(path, line_id + 1)
+        if not line:
+            raise IndexError(f"idx={idx} file_id={file_id} line_id={line_id} path={path}")
+        return json.loads(line.strip())

@@ -1,0 +1,58 @@
+[base]
+type = ml-easy-job
+
+[resource]
+usergroup = hadoop-speech
+queue = root.hldy_training_cluster.hadoop-aipnlp.a_exp
+
+[roles]
+workers = 8
+worker.memory = 1638400
+worker.vcore = 160
+worker.ports = 1
+worker.script = python3 gpu_job_launcher.py --work_dir /mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction --launch_mode ddp --log_dir /mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword_corrector3_all/hope_log train_keyword_corrector3.py --train_filelist /mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_distract/qwen3_sft/train.jsonl.filelist --eval_filelist /mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_distract/qwen3_sft/dev.jsonl.filelist
+worker.gcoresh800-80g = 8
+
+[user_args]
+
+[am]
+afo.app.am.resource.mb = 4096
+
+[tensorboard]
+with.tensor.board = false
+
+[docker]
+afo.docker.image.name = registryonline-hulk.sankuai.com/custom_prod/com.sankuai.phxmlp.mtjupyter.singleuser/hdp_training_cuda12.1.1_python39_mllm_moe_rm_te_1.0.0_167501f0
+
+[data]
+afo.data.prefetch = false
+
+[failover]
+afo.app.support.engine.failover = false
+afo.role.worker.not.nccl_not_ready = true
+
+[conda]
+
+[config]
+
+[others]
+afo.engine.wait_for_job_finished = false
+afo.role.worker.task.attempt.max.retry = 0
+afo.app.env.HOPE_TRACKING_EXECUTOR_TYPE = process
+afo.app.env.YARN_CONTAINER_RUNTIME_DOCKER_SHM_SIZE_BYTES = 1374389534720
+afo.app.yarn.allocate.timeout.seconds = 259200
+afo.xm.notice.receivers.account = huangzijian07
+with_requirements = false
+project_id = 130590003
+afo.use.hadoop.client = true
+afo.use.hadoop.version = v2
+afo.use.hdfs.fuse = true
+afo.use.hdfs.fuse.readonly = false
+afo.use.hdfs.fuse.subpath = user:/mnt/hdfs/user,ml:/mnt/hdfs/ml,zw04mlnn01:/mnt/hdfs/zw04mlnn01
+afo.dolphinfs.otherusers = hadoop-speech-llm:false,hadoop-speech-storage:false,hadoop-speech-dolphinfs:false
+pc.use.hdfs.fuse = true
+pc.use.hdfs.fuse.subpath = :rw
+pc.use.hadoop.version = v2
+pc.use.dolphinfs.users = hadoop-speech-llm,hadoop-speech-storage,hadoop-speech-dolphinfs
+client.env.SPEECH_HOPE_SUBMIT_GPU_VERSION = v2025.08.06
+

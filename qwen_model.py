@@ -24,11 +24,10 @@ from transformers.integrations import is_deepspeed_zero3_enabled
 from transformers.trainer import TRAINING_ARGS_NAME
 
 from utils.logger import logger
-from qwen_utils import QwenArgs, QwenCorrectionDataset, IGNORE_INDEX
+from qwen_utils import QwenArgs, QwenCorrectionDataset, QwenCorrectionIndexDataset, IGNORE_INDEX
 
 has_cuda = torch.cuda.is_available()
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "FALSE")
-os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 
 def _extract_corrected_sentence(raw: str) -> str:
@@ -184,10 +183,15 @@ class QwenCorrectionModel:
             self.args.update_from_dict(args)
         if not output_dir:
             output_dir = self.args.output_dir
-        if os.path.exists(output_dir) and os.listdir(output_dir) and not self.args.overwrite_output_dir:
+        if (
+            os.path.exists(output_dir)
+            and os.listdir(output_dir)
+            and not self.args.overwrite_output_dir
+            and not self.args.resume_from_checkpoint
+        ):
             raise ValueError(
                 f"Output directory ({output_dir}) already exists and is not empty. "
-                "Set overwrite_output_dir=True to overwrite."
+                "Set overwrite_output_dir=True to overwrite, or use --resume to resume from checkpoint."
             )
 
         training_args = TrainingArguments(
@@ -199,7 +203,6 @@ class QwenCorrectionModel:
             max_steps=self.args.max_steps,
             per_device_train_batch_size=self.args.per_device_train_batch_size,
             per_device_eval_batch_size=self.args.per_device_train_batch_size,
-            gradient_checkpointing=self.args.gradient_checkpointing,
             gradient_accumulation_steps=self.args.gradient_accumulation_steps,
             warmup_steps=self.args.warmup_steps,
             save_steps=self.args.save_steps,
@@ -221,9 +224,7 @@ class QwenCorrectionModel:
 
         if self.args.use_peft:
             if self.args.int8 or self.args.int4:
-                self.model = prepare_model_for_kbit_training(
-                    self.model, self.args.gradient_checkpointing
-                )
+                self.model = prepare_model_for_kbit_training(self.model, False)
             target_modules = self.args.lora_target_modules
             if isinstance(target_modules, list) and "all" in target_modules:
                 target_modules = self._find_all_linear_names()
@@ -255,14 +256,10 @@ class QwenCorrectionModel:
         else:
             os.makedirs(output_dir, exist_ok=True)
 
-        train_dataset = self.load_and_cache_examples(train_data)
-        eval_dataset = self.load_and_cache_examples(eval_data, evaluate=True) if eval_data is not None else None
+        train_dataset = self._get_train_or_eval_dataset(train_data, evaluate=False)
+        eval_dataset = self._get_train_or_eval_dataset(eval_data, evaluate=True) if eval_data is not None else None
 
-        if self.args.gradient_checkpointing:
-            self.model.gradient_checkpointing_enable()
-            self.model.config.use_cache = False
-        else:
-            self.model.config.use_cache = True
+        self.model.config.use_cache = True
         self.model.enable_input_require_grads()
 
         data_collator = DataCollatorForSeq2Seq(
@@ -313,6 +310,20 @@ class QwenCorrectionModel:
                     continue
                 names.add(name.split(".")[-1])
         return list(names)
+
+    def _get_train_or_eval_dataset(self, data, evaluate=False):
+        """
+        构建训练/验证数据集。
+        data 可为：
+        - None
+        - str：filelist 路径（如 xxx/train.jsonl.filelist），用 QwenCorrectionIndexDataset 流式加载
+        - DataFrame 或 list：用 QwenCorrectionDataset（全量在内存）
+        """
+        if data is None:
+            return None
+        if isinstance(data, str) and ("filelist" in data or data.endswith(".filelist")):
+            return QwenCorrectionIndexDataset(data)
+        return self.load_and_cache_examples(data, evaluate=evaluate)
 
     def load_and_cache_examples(self, data, evaluate=False, no_cache=False, verbose=True, silent=False):
         """构建训练/验证数据集。data 为 DataFrame(input_text, target_text) 或 list of [src, trg]。"""

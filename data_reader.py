@@ -95,6 +95,64 @@ def _read_keyword_lines_from_dir(dir_path):
     return out
 
 
+def stream_pos_rows(pos_dir):
+    """流式逐条 yield (input_text, target_text)，不把正例全量读入内存。"""
+    if not os.path.isdir(pos_dir):
+        return
+    for path in sorted(glob.glob(os.path.join(pos_dir, "*.txt"))):
+        if "asr_en" in path:
+            continue
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(KEYWORD_SEP)
+                if len(parts) != 3:
+                    continue
+                error_text = parts[0].strip()
+                keywords_str = parts[1].strip()
+                target_text = parts[2].strip()
+                input_text = KEYWORD_USER_TEMPLATE.format(error=error_text, keywords=keywords_str)
+                yield (input_text, target_text)
+
+
+def reservoir_sample_neg_rows(neg_dir, n_sample, rng=None):
+    """
+    从 neg_dir 流式读取，用 reservoir sampling 采样 n_sample 条，yield (input_text, target_text)。
+    rng 为 np.random.Generator 或 None（用 random）。
+    """
+    if not os.path.isdir(neg_dir) or n_sample <= 0:
+        return
+    pool = []
+    use_np = rng is not None
+    idx = 0
+    for path in sorted(glob.glob(os.path.join(neg_dir, "*.txt"))):
+        if "asr_en" in path:
+            continue
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(KEYWORD_SEP)
+                if len(parts) != 3:
+                    continue
+                error_text = parts[0].strip()
+                keywords_str = parts[1].strip()
+                target_text = parts[2].strip()
+                input_text = KEYWORD_USER_TEMPLATE.format(error=error_text, keywords=keywords_str)
+                if idx < n_sample:
+                    pool.append((input_text, target_text))
+                else:
+                    j = rng.integers(0, idx + 1) if use_np else random.randint(0, idx)
+                    if j < n_sample:
+                        pool[j] = (input_text, target_text)
+                idx += 1
+    for item in pool:
+        yield item
+
+
 def load_keyword_correction_data(pos_dir, neg_dir, neg_ratio=1.0, seed=42):
     """
     加载「上下文关键词」纠错数据：正例全用，负例按 neg_ratio 倍正例数量随机采样后与正例打乱。
