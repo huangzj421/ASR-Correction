@@ -40,8 +40,8 @@ mkdir -p $hope_log_dir
 TRAIN_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_distract/qwen3_sft/train.jsonl.filelist"   # 例如: output/keyword_corrector3_jsonl/train.jsonl.filelist
 EVAL_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_distract/qwen3_sft/dev.jsonl.filelist"    # 例如: output/keyword_corrector3_jsonl/dev.jsonl.filelist
 
-# train_args="--resume"
-train_args=""
+train_args="--resume"
+# train_args=""
 if [ -n "$TRAIN_FILELIST" ] && [ -f "$TRAIN_FILELIST" ]; then
   train_args="$train_args --train_filelist $TRAIN_FILELIST"
   [ -n "$EVAL_FILELIST" ] && [ -f "$EVAL_FILELIST" ] && train_args="$train_args --eval_filelist $EVAL_FILELIST"
