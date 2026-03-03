@@ -4,3 +4,5 @@ cache_dir/
 output/
 runs/
 utils/__pycache__/
+.metals/
+.vscode/

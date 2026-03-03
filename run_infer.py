@@ -80,7 +80,7 @@ def run():
     parser.add_argument("--model_dir", type=str, default=None, help="模型目录（含 checkpoint-* 的目录），默认 config.keyword_model_dir")
     parser.add_argument("--output_dir", type=str, default=None, help="输出目录，默认 model_dir 下的 infer_output")
     parser.add_argument("--max_length", type=int, default=256)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=1)
     args = parser.parse_args()
 
     model_dir = args.model_dir or getattr(config, "keyword_model_dir", "output/model_qwen3_keyword")
@@ -95,10 +95,15 @@ def run():
     input_texts = [r[1] for r in rows]
     logger.info("输入行数: %d", len(rows))
 
-    checkpoints = list_checkpoints(model_dir)
-    if not checkpoints:
-        logger.warning("未找到任何 checkpoint（需含 adapter_config.json），尝试将 model_dir 视为单个 checkpoint")
+    if "checkpoint" in model_dir:
+        logger.info("model_dir 似乎是单个 checkpoint，尝试直接加载")
         checkpoints = [("model", model_dir)]
+        model_dir = os.path.dirname(model_dir)  # 以便后续加载 PEFT
+    else:
+        checkpoints = list_checkpoints(model_dir)
+        if not checkpoints:
+            logger.warning("未找到任何 checkpoint（需含 adapter_config.json），尝试将 model_dir 视为单个 checkpoint")
+            checkpoints = [("model", model_dir)]
 
     for ckpt_name, ckpt_path in checkpoints:
         out_path = os.path.join(output_dir, "pred_{}.txt".format(ckpt_name))

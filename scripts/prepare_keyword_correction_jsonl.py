@@ -102,14 +102,14 @@ def _tokenize_one_chunk(args_tuple: tuple) -> tuple[str, int]:
 
 def main():
     parser = argparse.ArgumentParser(description="预处理关键词纠错数据为 jsonl + filelist（流式+多进程）")
-    parser.add_argument("--pos_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_no_homo/raw_data", help="正例目录")
+    parser.add_argument("--pos_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_NER/raw_data", help="正例目录")
     parser.add_argument("--neg_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_distract/raw_data", help="负例目录")
     parser.add_argument("--neg_ratio", type=float, default=None)
     parser.add_argument("--dev_ratio", type=float, default=None)
     parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--out_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_distract/qwen3_sft", help="输出目录（jsonl 与 filelist）")
+    parser.add_argument("--out_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_NER_distract_ratio1/qwen3_sft", help="输出目录（jsonl 与 filelist）")
     parser.add_argument("--lines_per_shard", type=int, default=50000)
-    parser.add_argument("-j", "--workers", type=int, default=16)
+    parser.add_argument("-j", "--workers", type=int, default=24)
     parser.add_argument("--max_seq_length", type=int, default=None)
     parser.add_argument("--max_length", type=int, default=None)
     parser.add_argument("--format", type=str, choices=["jsonl", "binary"], default="jsonl",
