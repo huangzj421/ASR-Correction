@@ -6,3 +6,4 @@ runs/
 utils/__pycache__/
 .metals/
 .vscode/
+.hope/

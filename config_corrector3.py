@@ -35,8 +35,8 @@ learning_rate = 2e-5
 
 gpu_id = 0
 
-# ---------- 上下文关键词纠错分支（train_keyword.py）----------
-# 正例目录：正确词在关键词里；负例目录：全干扰，希望模型不纠错
+# ---------- 上下文关键词纠错分支（train_keyword_corrector3.py）----------
+# 正例目录：正确词在关键词里；负例目录：全干扰，希望模型不纠错（未用 filelist 时生效）
 keyword_pos_dir = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_no_homo/raw_data_test"
 keyword_neg_dir = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_distract/raw_data_test"
 # 负例采样量 = 正例数量 * keyword_neg_ratio
@@ -45,6 +45,13 @@ keyword_neg_ratio = 1.0
 keyword_dev_ratio = 0.1
 keyword_model_dir = os.path.join(output_dir, "model_qwen3_keyword_corrector3_all")
 manual_seed = 42
+
+# 大数据流式：prepare_keyword_correction_jsonl.py 生成的 filelist（不设或空则用 pos_dir/neg_dir 全量进内存）
+train_filelist = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft/train.jsonl.filelist"
+eval_filelist = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft/dev.jsonl.filelist"
+
+# 断点续训：True=从 output_dir 找最新 checkpoint；路径=从该目录恢复；None=从头训练
+resume_from_checkpoint = True
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)

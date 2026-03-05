@@ -20,6 +20,29 @@ from utils.logger import logger
 from qwen_model import QwenCorrectionModel
 
 
+def _has_valid_checkpoint(path: str) -> bool:
+    """目录是否为有效 PEFT checkpoint（含 adapter_model 或 trainer_state）。"""
+    if not path or not os.path.isdir(path):
+        return False
+    for name in ("adapter_model.safetensors", "adapter_model.bin", "trainer_state.json"):
+        if os.path.isfile(os.path.join(path, name)):
+            return True
+    return False
+
+
+def _find_latest_checkpoint(output_dir: str) -> bool:
+    """output_dir 下是否存在任意 checkpoint-* 且为有效 checkpoint。"""
+    if not os.path.isdir(output_dir):
+        return False
+    import re
+    best_step = -1
+    for name in os.listdir(output_dir):
+        m = re.match(r"checkpoint-(\d+)", name)
+        if m and _has_valid_checkpoint(os.path.join(output_dir, name)):
+            best_step = max(best_step, int(m.group(1)))
+    return best_step >= 0
+
+
 def train_keyword(
     pos_dir=None,
     neg_dir=None,
@@ -78,6 +101,16 @@ def train_keyword(
         )
 
     resume_from_checkpoint = resume_from_checkpoint if resume_from_checkpoint is not None else getattr(config, "resume_from_checkpoint", None)
+    # 若指定了 --resume 但不存在有效 checkpoint，则自动退化为从头训练
+    if resume_from_checkpoint is not None:
+        if resume_from_checkpoint is True:
+            if not _find_latest_checkpoint(model_dir):
+                logger.warning("--resume 已指定，但 output_dir 下未发现有效 checkpoint，将从头开始训练。")
+                resume_from_checkpoint = None
+        else:
+            if not _has_valid_checkpoint(resume_from_checkpoint):
+                logger.warning("--resume %s 不是有效 checkpoint，将从头开始训练。", resume_from_checkpoint)
+                resume_from_checkpoint = None
     model_args = {
         "reprocess_input_data": True,
         "overwrite_output_dir": not resume_from_checkpoint,
@@ -102,31 +135,30 @@ def train_keyword(
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser(description="关键词纠错训练（支持 filelist 流式）")
-    p.add_argument("--pos_dir", type=str, default=None)
-    p.add_argument("--neg_dir", type=str, default=None)
-    p.add_argument("--neg_ratio", type=float, default=None)
-    p.add_argument("--dev_ratio", type=float, default=None)
-    p.add_argument("--seed", type=int, default=None)
-    p.add_argument("--train_filelist", type=str, default=None, help="训练集 filelist，与 eval_filelist 一起用时为流式加载")
-    p.add_argument("--eval_filelist", type=str, default=None, help="验证集 filelist")
+    p.add_argument("--model_dir", type=str, default=None, help="模型/checkpoint 输出目录，未设则从 config 读")
+    p.add_argument("--train_filelist", type=str, default=None, help="训练集 filelist，未设则从 config 读")
+    p.add_argument("--eval_filelist", type=str, default=None, help="验证集 filelist，未设则从 config 读")
     p.add_argument("--resume", type=str, default=None, nargs="?", const="True",
-                   help="断点续训：不传值时从 output_dir 中找最新 checkpoint；传路径则从该 checkpoint 目录恢复，如 --resume output/model_qwen3_keyword/checkpoint-800")
+                   help="断点续训：不传值时从 output_dir 找最新 checkpoint；传路径则从该目录恢复；未传则从 config 读")
+    p.add_argument("--seed", type=int, default=None)
     a = p.parse_args()
 
+    model_dir = a.model_dir or getattr(config, "keyword_model_dir", None)
+    train_filelist = a.train_filelist or getattr(config, "train_filelist", None)
+    eval_filelist = a.eval_filelist or getattr(config, "eval_filelist", None)
     resume_from_checkpoint = None
     if a.resume is not None:
         if a.resume == "True" or a.resume == "":
-            resume_from_checkpoint = True  # Trainer 会在 output_dir 中自动找最新 checkpoint
+            resume_from_checkpoint = True
         else:
             resume_from_checkpoint = a.resume
+    else:
+        resume_from_checkpoint = getattr(config, "resume_from_checkpoint", None)
 
     train_keyword(
-        pos_dir=a.pos_dir,
-        neg_dir=a.neg_dir,
-        neg_ratio=a.neg_ratio or getattr(config, "keyword_neg_ratio", 1.0),
-        dev_ratio=a.dev_ratio if a.dev_ratio is not None else getattr(config, "keyword_dev_ratio", 0.1),
-        seed=a.seed if a.seed is not None else getattr(config, "manual_seed", 42),
-        train_filelist=a.train_filelist,
-        eval_filelist=a.eval_filelist,
+        model_dir=model_dir,
+        train_filelist=train_filelist,
+        eval_filelist=eval_filelist,
         resume_from_checkpoint=resume_from_checkpoint,
+        seed=a.seed if a.seed is not None else getattr(config, "manual_seed", 42),
     )

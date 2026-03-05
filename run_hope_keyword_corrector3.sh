@@ -31,30 +31,31 @@ image=registryonline-hulk.sankuai.com/custom_prod/com.sankuai.phxmlp.mtjupyter.s
 gpu_queue=root.hldy_training_cluster.hadoop-aipnlp.a_exp
 
 nprocs=$((nnodes * nproc_per_node))
-dir="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword_corrector3_all"
-hope_log_dir=$dir/hope_log
-mkdir -p $hope_log_dir
 
-# 大数据流式：先跑 scripts/prepare_keyword_correction_jsonl.py 得到 filelist，再在这里填路径
-# 不设或留空则从 config 的 pos_dir/neg_dir 读（小数据、全量进内存）
-TRAIN_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_distract/qwen3_sft/train.jsonl.filelist"   # 例如: output/keyword_corrector3_jsonl/train.jsonl.filelist
-EVAL_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_mix_distract/qwen3_sft/dev.jsonl.filelist"    # 例如: output/keyword_corrector3_jsonl/dev.jsonl.filelist
+# 训练参数：此处优先；未设置则 train_keyword_corrector3.py 从 config_corrector3.py 读取
+OUTPUT_DIR="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword_corrector3_dense2b_text"
+TRAIN_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft/train.jsonl.filelist"
+EVAL_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft/dev.jsonl.filelist"
+RESUME=1   # 1=断点续训，空或0=从头训练
 
-train_args="--resume"
-# train_args=""
-if [ -n "$TRAIN_FILELIST" ] && [ -f "$TRAIN_FILELIST" ]; then
-  train_args="$train_args --train_filelist $TRAIN_FILELIST"
-  [ -n "$EVAL_FILELIST" ] && [ -f "$EVAL_FILELIST" ] && train_args="$train_args --eval_filelist $EVAL_FILELIST"
-fi
+hope_log_dir="${OUTPUT_DIR}/hope_log"
+mkdir -p "$hope_log_dir"
+
+train_args=""
+[ -n "$OUTPUT_DIR" ] && train_args="$train_args --model_dir $OUTPUT_DIR"
+[ -n "$TRAIN_FILELIST" ] && train_args="$train_args --train_filelist $TRAIN_FILELIST"
+[ -n "$EVAL_FILELIST" ] && train_args="$train_args --eval_filelist $EVAL_FILELIST"
+[ -n "$RESUME" ] && [ "$RESUME" != "0" ] && train_args="$train_args --resume"
 
 if [ $stage -le 4 ]; then
   if [ "$use_hope" == "true" ]; then
-    priority=P1
+    priority=P0
     launch_cmd="$AM_ROOT/kaldi_utils/parallel/hope_submit_gpu.py \
 --job_name $job_name \
 --timeout 72 \
 --log_dir $hope_log_dir \
 --gpu_type $gpu_type \
+--review_code a0112_p0_32x14_7 \
 --priority $priority \
 --nnodes $nnodes \
 --image $image \
@@ -68,5 +69,5 @@ if [ $stage -le 4 ]; then
   fi
 
   set -x
-  $launch_cmd train_keyword_corrector3.py $train_args || exit 1
+  $launch_cmd train_keyword_corrector3.py $train_args "$@" || exit 1
 fi
