@@ -36,6 +36,7 @@ def train_keyword(
     learning_rate=None,
     eval_steps=None,
     save_steps=None,
+    gradient_accumulation_steps=None,
     train_filelist=None,
     eval_filelist=None,
     resume_from_checkpoint=None,
@@ -55,6 +56,7 @@ def train_keyword(
     learning_rate = learning_rate or getattr(config, "learning_rate", 2e-5)
     eval_steps = eval_steps or getattr(config, "eval_steps", 200)
     save_steps = save_steps or getattr(config, "save_steps", 400)
+    gradient_accumulation_steps = gradient_accumulation_steps if gradient_accumulation_steps is not None else getattr(config, "gradient_accumulation_steps", 1)
 
     if train_filelist and os.path.isfile(train_filelist):
         train_data = train_filelist
@@ -89,6 +91,7 @@ def train_keyword(
         "use_peft": use_peft,
         "eval_steps": eval_steps,
         "save_steps": save_steps,
+        "gradient_accumulation_steps": gradient_accumulation_steps,
         "learning_rate": learning_rate,
         "bf16": use_cuda,
         "prompt_template_name": "qwen",
@@ -111,6 +114,7 @@ if __name__ == "__main__":
     p.add_argument("--eval_filelist", type=str, default=None, help="验证集 filelist")
     p.add_argument("--model_dir", type=str, default=None,
                    help="模型输出目录（训练 checkpoint 与最终保存路径），不传则用 config 的 keyword_model_dir")
+    p.add_argument("--gradient_accumulation_steps", type=int, default=None, help="梯度累积步数，增大可等效更大 batch、减少 step 数")
     p.add_argument("--resume", type=str, default=None, nargs="?", const="True",
                    help="断点续训：不传值时从 output_dir 中找最新 checkpoint；传路径则从该 checkpoint 目录恢复，如 --resume output/model_qwen3_keyword/checkpoint-800")
     a = p.parse_args()
@@ -131,5 +135,6 @@ if __name__ == "__main__":
         train_filelist=a.train_filelist,
         eval_filelist=a.eval_filelist,
         model_dir=a.model_dir,
+        gradient_accumulation_steps=a.gradient_accumulation_steps,
         resume_from_checkpoint=resume_from_checkpoint,
     )

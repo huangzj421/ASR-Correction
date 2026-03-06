@@ -194,7 +194,7 @@ class QwenCorrectionModel:
                 "Set overwrite_output_dir=True to overwrite, or use --resume to resume from checkpoint."
             )
 
-        training_args = TrainingArguments(
+        _ta_kw = dict(
             output_dir=output_dir,
             learning_rate=self.args.learning_rate,
             num_train_epochs=self.args.num_train_epochs,
@@ -220,6 +220,7 @@ class QwenCorrectionModel:
             no_cuda=(self.device.type == "cpu"),
             **kwargs,
         )
+        training_args = TrainingArguments(**_ta_kw)
         resume_from_checkpoint = self.args.resume_from_checkpoint
         # resume_from_checkpoint=True 时解析为 output_dir 下最新 checkpoint 路径，若无则置为 False，避免 Trainer 报错
         if resume_from_checkpoint is True:

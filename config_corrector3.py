@@ -24,9 +24,10 @@ model_dir = os.path.join(output_dir, "model_qwen3_{}".format(dataset))
 # model_dir = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword/checkpoint-14400"
 
 batch_size = 4
+gradient_accumulation_steps = 2  # 有效 batch = batch_size * n_gpus * gradient_accumulation_steps，适当增大可加速
 epochs = 3
-max_length = 512
-max_seq_length = 512
+max_length = 256
+max_seq_length = 256  # 若任务允许可适当减小（如 256）以加速
 eval_batch_size = 1
 eval_steps = 10000
 save_steps = 20000
