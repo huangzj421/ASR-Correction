@@ -24,14 +24,14 @@ stage=2
 ### hope ###
 use_hope=true
 job_name=a0302_p0_64x30_4_asr_correction_keyword_corrector3
-nnodes=8
+nnodes=4
 nproc_per_node=8
 gpu_type=gcoresh800-80g
 image=registryonline-hulk.sankuai.com/custom_prod/com.sankuai.phxmlp.mtjupyter.singleuser/hdp_training_cuda12.1.1_python39_mllm_moe_rm_te_1.0.0_167501f0
 gpu_queue=root.hldy_training_cluster.hadoop-aipnlp.a_exp
 
 nprocs=$((nnodes * nproc_per_node))
-dir="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword_corrector3_all"
+dir="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword_corrector3_all_test"
 hope_log_dir=$dir/hope_log
 mkdir -p $hope_log_dir
 
@@ -49,12 +49,13 @@ fi
 
 if [ $stage -le 4 ]; then
   if [ "$use_hope" == "true" ]; then
-    priority=P1
+    priority=P0
     launch_cmd="$AM_ROOT/kaldi_utils/parallel/hope_submit_gpu.py \
 --job_name $job_name \
 --timeout 72 \
 --log_dir $hope_log_dir \
 --gpu_type $gpu_type \
+--review_code a0112_p0_32x14_7 \
 --priority $priority \
 --nnodes $nnodes \
 --image $image \

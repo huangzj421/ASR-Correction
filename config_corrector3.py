@@ -43,7 +43,7 @@ keyword_neg_dir = "/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/h
 keyword_neg_ratio = 1.0
 # 从合并后的数据中划分验证集比例
 keyword_dev_ratio = 0.1
-keyword_model_dir = os.path.join(output_dir, "model_qwen3_keyword_corrector3_all")
+keyword_model_dir = os.path.join(output_dir, "model_qwen3_keyword_corrector3_all_test")
 manual_seed = 42
 
 if not os.path.exists(output_dir):
