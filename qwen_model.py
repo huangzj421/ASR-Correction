@@ -221,6 +221,12 @@ class QwenCorrectionModel:
             **kwargs,
         )
         resume_from_checkpoint = self.args.resume_from_checkpoint
+        # resume_from_checkpoint=True 时解析为 output_dir 下最新 checkpoint 路径，若无则置为 False，避免 Trainer 报错
+        if resume_from_checkpoint is True:
+            resolved = self._get_last_checkpoint(output_dir)
+            resume_from_checkpoint = resolved if resolved else False
+            if resolved is None and self.args.resume_from_checkpoint is True:
+                logger.info("No checkpoint found in %s, starting from scratch.", output_dir)
 
         if self.args.use_peft:
             if self.args.int8 or self.args.int4:
@@ -277,6 +283,9 @@ class QwenCorrectionModel:
             _trainer_kw["processing_class"] = self.tokenizer
         else:
             _trainer_kw["tokenizer"] = self.tokenizer
+        # 仅当当前 Trainer 支持 label_names 时才传入（部分 transformers 版本不支持，会报 unexpected keyword argument）
+        if "label_names" in inspect.signature(Trainer.__init__).parameters and self.args.use_peft:
+            _trainer_kw["label_names"] = ["labels"]
         trainer = Trainer(**_trainer_kw)
 
         logger.info("*** Train ***")
@@ -310,6 +319,23 @@ class QwenCorrectionModel:
                     continue
                 names.add(name.split(".")[-1])
         return list(names)
+
+    def _get_last_checkpoint(self, output_dir: str):
+        """从 output_dir 中找最新的 checkpoint 目录路径，若无则返回 None。"""
+        if not output_dir or not os.path.isdir(output_dir):
+            return None
+        import re
+        checkpoints = []
+        for name in os.listdir(output_dir):
+            m = re.match(r"checkpoint-(\d+)$", name)
+            if m:
+                path = os.path.join(output_dir, name)
+                if os.path.isdir(path):
+                    checkpoints.append((int(m.group(1)), path))
+        if not checkpoints:
+            return None
+        checkpoints.sort(key=lambda x: x[0], reverse=True)
+        return checkpoints[0][1]
 
     def _get_train_or_eval_dataset(self, data, evaluate=False):
         """

@@ -109,6 +109,8 @@ if __name__ == "__main__":
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--train_filelist", type=str, default=None, help="训练集 filelist，与 eval_filelist 一起用时为流式加载")
     p.add_argument("--eval_filelist", type=str, default=None, help="验证集 filelist")
+    p.add_argument("--model_dir", type=str, default=None,
+                   help="模型输出目录（训练 checkpoint 与最终保存路径），不传则用 config 的 keyword_model_dir")
     p.add_argument("--resume", type=str, default=None, nargs="?", const="True",
                    help="断点续训：不传值时从 output_dir 中找最新 checkpoint；传路径则从该 checkpoint 目录恢复，如 --resume output/model_qwen3_keyword/checkpoint-800")
     a = p.parse_args()
@@ -128,5 +130,6 @@ if __name__ == "__main__":
         seed=a.seed if a.seed is not None else getattr(config, "manual_seed", 42),
         train_filelist=a.train_filelist,
         eval_filelist=a.eval_filelist,
+        model_dir=a.model_dir,
         resume_from_checkpoint=resume_from_checkpoint,
     )
