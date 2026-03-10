@@ -89,6 +89,9 @@ def load_key_value(fn):
             res[key] = value
     return res
 
+def remove_punctuation(text):
+    return re.sub(r'[^\w\s]', '', text)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -103,7 +106,7 @@ def main():
     hyp1_dict = load_key_value(args.hyp1)
     hyp2_dict = load_key_value(args.hyp2)
 
-    jsonl_path = '/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/test_set/prompt_filter.txt'
+    jsonl_path = '/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/test_set/prompt.txt'
 
     data_dict = {}
     with open(jsonl_path, 'r', encoding='utf-8') as f:
@@ -126,7 +129,7 @@ def main():
         ref_text = ref_dict[key]
         h1 = hyp1_dict[key]
         h2 = hyp2_dict[key]
-        if h1 == h2:
+        if remove_punctuation(h1) == remove_punctuation(h2):
             continue
         try:
             ref_len1, _, _, _, _, wer1_raw, word_out1 = cal_wer([ref_text], [h1])

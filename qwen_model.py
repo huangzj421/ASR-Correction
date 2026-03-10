@@ -402,6 +402,7 @@ class QwenCorrectionModel:
                 max_length=self.args.max_seq_length,
                 enable_thinking=False # Switches between thinking and non-thinking modes. Default is True.
             )
+            import pdb; pdb.set_trace()
             if hasattr(inputs, "to"):
                 input_ids = inputs.to(self.device)
             else:
@@ -420,7 +421,9 @@ class QwenCorrectionModel:
             for j, out in enumerate(outputs):
                 gen = out[prompt_length:]
                 text = self.tokenizer.decode(gen, skip_special_tokens=True)
+                import pdb; pdb.set_trace()
                 text = _extract_corrected_sentence(text)
+                import pdb; pdb.set_trace()
                 all_outputs.append(text)
         return all_outputs
 

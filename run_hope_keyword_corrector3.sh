@@ -31,14 +31,14 @@ image=registryonline-hulk.sankuai.com/custom_prod/com.sankuai.phxmlp.mtjupyter.s
 gpu_queue=root.hldy_training_cluster.hadoop-aipnlp.a_exp
 
 nprocs=$((nnodes * nproc_per_node))
-dir="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword_corrector3_dense2b_text"
+dir="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/ASR-Correction/output/model_qwen3_keyword_corrector3_dense2b_text_itn"
 hope_log_dir=$dir/hope_log
 mkdir -p $hope_log_dir
 
 # 大数据流式：先跑 scripts/prepare_keyword_correction_jsonl.py 得到 filelist，再在这里填路径
 # 不设或留空则从 config 的 pos_dir/neg_dir 读（小数据、全量进内存）
-TRAIN_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft/train.jsonl.test.filelist"   # 例如: output/keyword_corrector3_jsonl/train.jsonl.filelist
-EVAL_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft/dev.jsonl.test.filelist"    # 例如: output/keyword_corrector3_jsonl/dev.jsonl.filelist
+TRAIN_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft_itn/train.jsonl.test.filelist"   # 例如: output/keyword_corrector3_jsonl/train.jsonl.filelist
+EVAL_FILELIST="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft_itn/dev.jsonl.test.filelist"    # 例如: output/keyword_corrector3_jsonl/dev.jsonl.filelist
 
 train_args="--resume --model_dir $dir"
 # train_args="--model_dir $dir"
@@ -49,13 +49,12 @@ fi
 
 if [ $stage -le 4 ]; then
   if [ "$use_hope" == "true" ]; then
-    priority=P0
+    priority=P1
     launch_cmd="$AM_ROOT/kaldi_utils/parallel/hope_submit_gpu.py \
 --job_name $job_name \
 --timeout 72 \
 --log_dir $hope_log_dir \
 --gpu_type $gpu_type \
---review_code a0112_p0_32x14_7 \
 --priority $priority \
 --nnodes $nnodes \
 --image $image \

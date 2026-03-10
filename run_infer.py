@@ -14,7 +14,6 @@ from data_reader import KEYWORD_SEP, build_keyword_input
 from infer import Inference
 from utils.logger import logger
 
-
 def parse_infer_line(line):
     """
     解析一行：序号 错误文本<mask_99>关键词<mask_99>
@@ -33,7 +32,7 @@ def parse_infer_line(line):
     segs = rest.split(KEYWORD_SEP)
     if len(segs) < 2:
         return None
-    error_text = segs[0].strip()
+    error_text = re.sub(r'[^\w\s]', '', segs[0].strip())
     keywords_str = segs[1].strip()
     input_text = build_keyword_input(error_text, keywords_str)
     return (idx_str, input_text)
@@ -72,7 +71,6 @@ def list_checkpoints(model_dir):
     if os.path.isfile(root_adapter):
         checkpoints.append(("final", model_dir))
     return checkpoints
-
 
 def run():
     parser = argparse.ArgumentParser(description="对每个 checkpoint 推理并输出 序号 纠错文本")

@@ -102,12 +102,12 @@ def _tokenize_one_chunk(args_tuple: tuple) -> tuple[str, int]:
 
 def main():
     parser = argparse.ArgumentParser(description="预处理关键词纠错数据为 jsonl + filelist（流式+多进程）")
-    parser.add_argument("--pos_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/raw_data_add_action/positive", help="正例目录")
-    parser.add_argument("--neg_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/raw_data_add_action/negative", help="负例目录")
+    parser.add_argument("--pos_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/raw_data_itn/positive", help="正例目录")
+    parser.add_argument("--neg_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/raw_data_itn/negative", help="负例目录")
     parser.add_argument("--neg_ratio", type=float, default=None)
     parser.add_argument("--dev_ratio", type=float, default=None)
     parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--out_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft_add_action", help="输出目录（jsonl 与 filelist）")
+    parser.add_argument("--out_dir", type=str, default="/mnt/dolphinfs/hdd_pool/docker/user/hadoop-speech-dolphinfs/hadoop-speech/users/huangzijian07/data/longcat-s/train/prepare/asr_correction/data_dense2b_txt/qwen3_sft_itn", help="输出目录（jsonl 与 filelist）")
     parser.add_argument("--lines_per_shard", type=int, default=50000)
     parser.add_argument("-j", "--workers", type=int, default=30)
     parser.add_argument("--max_seq_length", type=int, default=None)
